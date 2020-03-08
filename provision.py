@@ -26,41 +26,50 @@ def scan():
 
 setup_data = "\x01\x00"
 
-p = btle.Peripheral("a4:c1:38:8a:5c:52")
 
-class MyDelegate(btle.DefaultDelegate):
-    def __init__(self):
+class MiProvision(btle.DefaultDelegate):
+    def __init__(self, mac):
         btle.DefaultDelegate.__init__(self)
-        # ... initialise here
+        self.p = btle.Peripheral(mac)
+        self.p.setDelegate(self)
+        self.frames = 0
 
     def handleNotification(self, cHandle, data):
         # ... perhaps check cHandle
         # ... process 'data'
-        if data == "\x00\x00\x00\x00\x02\x00":
-            bt_write(service_uuid, step1, False, "\x00\x00\x01\x01")
+        frm = ord(data[0]) + 0x100 * ord(data[1])
+        print("frm", frm)
         print(data.encode("hex"))
+        if frm == 0:
+            self.frames = ord(data[4]) + 0x100 * ord(data[5])
+            print("expecting",self.frames,"frames")
+            self.bt_write(service_uuid, step1, False, "\x00\x00\x01\x01")
+        if frm == self.frames:
+            print("All frames received")
+            self.bt_write(service_uuid, step1, False, "\x00\x00\x01\x00")
 
-def bt_write(serv, char, resp, data):
-    svc = p.getServiceByUUID(serv)
-    ch = svc.getCharacteristics(char)[0]
-    #time.sleep(3)
-    ch.write(data, resp)
+    def bt_write(self, serv, char, resp, data):
+        svc = self.p.getServiceByUUID(serv)
+        ch = svc.getCharacteristics(char)[0]
+        #time.sleep(3)
+        ch.write(data, resp)
+    
 
-p.setDelegate( MyDelegate() )
-
-def configure():
-
-    bt_write(service_uuid, step1, True, "\x01\x00")
-    bt_write(service_uuid, step1plus, True, "\x01\x00")
-    bt_write(service_uuid, step1plus, False, "\xa2\x00\x00\x00")
-
-    while True:
-        if p.waitForNotifications(1.0):
-            # handleNotification() was called
-            continue
-
-        print "Waiting..."
-        # Perhaps do something else here
-
+    def configure(self):
+    
+        self.bt_write(service_uuid, step1, True, "\x01\x00")
+        self.bt_write(service_uuid, step1plus, True, "\x01\x00")
+        self.bt_write(service_uuid, step1plus, False, "\xa2\x00\x00\x00")
+    
+        while True:
+            if self.p.waitForNotifications(1.0):
+                # handleNotification() was called
+                continue
+    
+            print "Waiting..."
+            # Perhaps do something else here
+    
 #scan()
-configure()
+mp = MiProvision("a4:c1:38:8a:5c:52")
+mp.configure()
+
