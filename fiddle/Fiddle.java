@@ -2,10 +2,19 @@
   import java.security.spec.ECGenParameterSpec;
   import java.security.interfaces.ECPublicKey;
   import java.security.spec.ECPoint;
+  import java.security.spec.ECParameterSpec;
+  import java.security.spec.ECPublicKeySpec;
   import java.security.KeyPair;
+  import java.security.KeyFactory;
   import java.security.PublicKey;
+  import java.security.PrivateKey;
   import java.util.Arrays;
-  
+  import java.math.BigInteger;
+  import java.io.InputStreamReader;
+  import java.io.BufferedReader;
+  import javax.crypto.KeyAgreement;
+  import javax.crypto.SecretKey;
+
   public class Fiddle
   {
     public static final String RECHARGE_MODE_DESIGNATED_AND_CACH = "04";
@@ -69,7 +78,31 @@
         byte[] b = getWCoords((ECPublicKey) publicKey);
         return b.length == 65 ? Arrays.copyOfRange(b, 1, 65) : b;
     }
-      
+
+    public static ECPublicKey decodePublicKey(byte[] bArr, ECParameterSpec eCParameterSpec) throws Exception {
+        if (bArr[0] == 4) {
+            int bitLength = ((eCParameterSpec.getOrder().bitLength() + 8) - 1) / 8;
+            if (bArr.length == (bitLength * 2) + 1) {
+                int i = 1 + bitLength;
+                return (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new ECPublicKeySpec(new ECPoint(new BigInteger(1, Arrays.copyOfRange(bArr, 1, i)), new BigInteger(1, Arrays.copyOfRange(bArr, i, bitLength + i))), eCParameterSpec));
+            }
+            throw new IllegalArgumentException("Invalid uncompressedPoint encoding, not the correct size");
+        }
+        throw new IllegalArgumentException("Invalid uncompressedPoint encoding, no uncompressed point indicator");
+    }
+
+    public static SecretKey decodeEShareKey(PublicKey publicKey, PrivateKey privateKey) {
+        try {
+            KeyAgreement instance = KeyAgreement.getInstance("ECDH");
+            instance.init(privateKey);
+            instance.doPhase(publicKey, true);
+            return instance.generateSecret("ECDH");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static void main(String[] args)
     {
         try {
@@ -80,7 +113,22 @@
             for (int i=0; i<DTS.length; i++){
                 System.out.printf("%02X", DTS[i]);
             }
-            System.out.printf("\n");
+            System.out.printf("\nEnter key from device:\n");
+
+            BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
+            String devKey = buffer.readLine();
+            System.out.printf("Entered key:\n%s\n", devKey);
+
+            byte[] bArr2 = new byte[65];
+            bArr2[0] = 4;
+            for (int i=0; i<64; i++){
+                bArr2[i+1] = (byte) ((Character.digit(devKey.charAt(i), 16) << 4)
+                             + Character.digit(devKey.charAt(i+1), 16));
+            }
+
+            PublicKey mDevicePubKey = decodePublicKey(bArr2, ((ECPublicKey) keyPair.getPublic()).getParams());
+            SecretKey eShareKey = decodeEShareKey(mDevicePubKey, keyPair.getPrivate());
+
         }
         catch (Exception e) {
             System.out.println(e);
