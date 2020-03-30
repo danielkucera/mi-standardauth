@@ -14,6 +14,9 @@
   import java.io.BufferedReader;
   import javax.crypto.KeyAgreement;
   import javax.crypto.SecretKey;
+  import java.security.NoSuchAlgorithmException;
+
+  import eu.danman.mistandardauth.Hkdf;
 
   public class Fiddle
   {
@@ -103,6 +106,17 @@
         }
     }
 
+    public static byte[] hmacDecode(byte[] bArr, byte[] bArr2) {
+        try {
+            Hkdf a2 = Hkdf.getMacInstance("HmacSHA256");
+            a2.a(bArr, bArr2);
+            return a2.a("mible-setup-info".getBytes(), 64);
+        } catch (NoSuchAlgorithmException e2) {
+            e2.printStackTrace();
+            return null;
+        }
+    }
+
     public static void main(String[] args)
     {
         try {
@@ -129,6 +143,20 @@
             PublicKey mDevicePubKey = decodePublicKey(bArr2, ((ECPublicKey) keyPair.getPublic()).getParams());
             SecretKey eShareKey = decodeEShareKey(mDevicePubKey, keyPair.getPrivate());
 
+            byte[] x = new byte[16];
+
+            byte[] a2 = hmacDecode(eShareKey.getEncoded(), x);
+            byte[] token = new byte[12];
+            System.arraycopy(a2, 0, token, 0, 12);
+            byte[] bind_key = new byte[16];
+            System.arraycopy(a2, 12, bind_key, 0, 16);
+            byte[] A = new byte[16];
+            System.arraycopy(a2, 28, A, 0, 16);
+            //applyDid(this.D);
+            System.out.printf("\nbind_key:\n");
+            for (int i=0; i<bind_key.length; i++){
+                System.out.printf("%02X", bind_key[i]);
+            }
         }
         catch (Exception e) {
             System.out.println(e);
