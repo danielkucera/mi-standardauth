@@ -11,6 +11,8 @@ package eu.danman.mistandardauth;
   import java.security.NoSuchAlgorithmException;
   import java.util.Arrays;
 
+// original at https://github.com/fineoio/fineo-client/blob/master/java/cognito-auth/src/main/java/io/fineo/client/auth/cognito/Hkdf.java
+
   public final class Hkdf {
     private final String hmacType;
     private final Provider c;
@@ -39,7 +41,8 @@ package eu.danman.mistandardauth;
         throw new InvalidKeyException("Algorithm for the provided key must match the algorithm for this Hkdf. Expected " + this.hmacType + " but found " + secretKey.getAlgorithm());
     }
 
-    public byte[] a(byte[] bArr, int i) throws IllegalStateException {
+    //deriveKey
+    public byte[] a(byte[] bArr, int i) throws IllegalStateException { 
         byte[] bArr2 = new byte[i];
         try {
             a(bArr, i, bArr2, 0);
@@ -49,7 +52,8 @@ package eu.danman.mistandardauth;
         }
     }
 
-    private Mac a() {
+    //createMAC
+    private Mac a() { 
         Mac mac;
         try {
             if (this.c != null) {
@@ -66,12 +70,14 @@ package eu.danman.mistandardauth;
         }
     }
 
+    //assertInitialized
     private void b() throws IllegalStateException {
         if (this.secretKey == null) {
             throw new IllegalStateException("Hkdf has not been initialized");
         }
     }
 
+    //deriveKey
     public void a(byte[] bArr, int i, byte[] bArr2, int i2) throws ShortBufferException, IllegalStateException {
         b();
         if (i < 0) {
@@ -117,6 +123,7 @@ package eu.danman.mistandardauth;
         }
     }
 
+    //init
     public void a(byte[] bArr, byte[] bArr2) {
         Mac mac;
         byte[] bArr3 = bArr2 == null ? f14467a : (byte[]) bArr2.clone();
